@@ -27,20 +27,6 @@ jobs:
         with:
           go-version: stable
 
-      - name: Add SSH Go Module Private Key
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
-          ssh-add - <<< "${{ secrets.GO_MODULE_PRIVATE_KEY }}"
-          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
-
-      - name: Setup access for private go modules
-        run: |
-          git config --global url."ssh://git@github.com/".insteadOf https://github.com/
-
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -58,20 +44,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
-
-      - name: Add SSH Go Module Private Key
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
-          ssh-add - <<< "${{ secrets.GO_MODULE_PRIVATE_KEY }}"
-          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
-
-      - name: Setup access for private go modules
-        run: |
-          git config --global url."ssh://git@github.com/".insteadOf https://github.com/
 
       - name: download dependencies
         run: go mod tidy
@@ -93,32 +65,16 @@ jobs:
         with:
           go-version: stable
 
-      - name: Add SSH Go Module Private Key
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
-          ssh-add - <<< "${{ secrets.GO_MODULE_PRIVATE_KEY }}"
-          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
-
-      - name: Setup access for private go modules
-        run: |
-          git config --global url."ssh://git@github.com/".insteadOf https://github.com/
-
       - name: download dependencies
         run: go mod tidy
 
       - name: generate test coverage
-        run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
+        run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./... -tags test
 
       - name: check test coverage
         uses: vladopajic/go-test-coverage@v2
         with:
-          profile: cover.out
-          local-prefix: github.com/LevinStrike/lux-backend
-          threshold-total: 90
+          config: ./.testcoverage.yaml
 
   build:
     name: build binary
@@ -133,20 +89,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
-
-      - name: Add SSH Go Module Private Key
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
-          ssh-add - <<< "${{ secrets.GO_MODULE_PRIVATE_KEY }}"
-          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
-
-      - name: Setup access for private go modules
-        run: |
-          git config --global url."ssh://git@github.com/".insteadOf https://github.com/
 
       - name: download dependencies
         run: go mod tidy

@@ -1,0 +1,89 @@
+package v1_test
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	v1 "github.com/LevinStrike/lux-backend/internal/auth/controllers/http/v1"
+	mockv1 "github.com/LevinStrike/lux-backend/internal/auth/controllers/http/v1/mocks"
+	authusecases "github.com/LevinStrike/lux-backend/internal/auth/usecases"
+	"github.com/LevinStrike/lux-backend/internal/core/apperror"
+	"github.com/go-chi/chi/v5"
+	"github.com/stretchr/testify/assert"
+)
+
+func Test_Handler_Login(t *testing.T) {
+	tests := map[string]struct {
+		req        *http.Request
+		service    func(*testing.T) *mockv1.MockService
+		respBody   v1.RespMessage
+		statusCode int
+	}{
+		"happy - test attachRoutes add route for auth": {
+			req: httptest.NewRequest(http.MethodGet, "/login", bytes.NewBuffer([]byte(`{"username": "bob", "password": "securepassword"}`))),
+			respBody: v1.RespMessage{
+				Status:  http.StatusOK,
+				Message: "authenticated",
+			},
+			statusCode: http.StatusOK,
+			service: func(t *testing.T) *mockv1.MockService {
+				s := mockv1.NewMockService(t)
+				s.On("Login", "bob", "securepassword").Return(nil)
+				return s
+			},
+		},
+		"happy - test failed authentication error returns StatusUnauthorized": {
+			req:        httptest.NewRequest(http.MethodGet, "/login", bytes.NewBuffer([]byte(`{"username": "bob", "password": "securepassword"}`))),
+			statusCode: http.StatusUnauthorized,
+			respBody: v1.RespMessage{
+				Status: http.StatusUnauthorized,
+				Error:  "failed to authenticate: unable to authenticate with invalid credentials",
+			},
+			service: func(t *testing.T) *mockv1.MockService {
+				s := mockv1.NewMockService(t)
+				s.On("Login", "bob", "securepassword").Return(authusecases.ErrInvalidUserCredentials)
+				return s
+			},
+		},
+		"sad - test bad request body returns bad request status": {
+			req:        httptest.NewRequest(http.MethodGet, "/login", bytes.NewBuffer([]byte(""))),
+			statusCode: http.StatusBadRequest,
+			respBody: v1.RespMessage{
+				Error:  apperror.NewBadRequestError(errors.New("EOF")).Error(),
+				Status: http.StatusBadRequest,
+			},
+			service: func(t *testing.T) *mockv1.MockService {
+				return mockv1.NewMockService(t)
+			},
+		},
+	}
+
+	router := chi.NewRouter()
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := v1.AttachController(router, tc.service(t))
+			if err != nil {
+				t.Fatal(fmt.Errorf("v1.AttachController: %w", err))
+			}
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, tc.req)
+			defer w.Result().Body.Close()
+			if err != nil {
+				t.Fatal(fmt.Errorf("router.ServeHTTP: %w", err))
+			}
+			assert.Equal(t, tc.statusCode, w.Result().StatusCode)
+
+			resp := v1.RespMessage{}
+			err = json.NewDecoder(w.Result().Body).Decode(&resp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assert.Equal(t, tc.respBody, resp)
+		})
+	}
+}

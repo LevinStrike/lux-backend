@@ -1,0 +1,8 @@
+with-expecter: true
+all: true
+filename: "mock_{{.InterfaceName}}.go"
+dir: "{{.InterfaceDir}}/mocks"
+mockname: "Mock{{.InterfaceName}}"
+outpkg: "mock{{.PackageName}}"
+packages:
+  github.com/LevinStrike/lux-backend/internal/services/users:

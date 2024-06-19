@@ -1,0 +1,59 @@
+package v1_test
+
+import (
+	"bytes"
+	"errors"
+	"io"
+	"testing"
+
+	v1 "github.com/LevinStrike/lux-backend/internal/auth/controllers/http/v1"
+	"github.com/LevinStrike/lux-backend/internal/core/apperror"
+	"github.com/stretchr/testify/assert"
+)
+
+func Test_JsonDecode(t *testing.T) {
+	tests := map[string]struct {
+		req          io.Reader
+		body         any
+		expectedBody any
+		err          error
+	}{
+		"happy - test empty body decodes without error": {
+			req:          bytes.NewBuffer([]byte("{}")),
+			body:         struct{}{},
+			expectedBody: map[string]any{},
+			err:          nil,
+		},
+		"happy - test body decodes to correct values": {
+			req: bytes.NewBuffer([]byte(`{"message": "decoded"}`)),
+			body: struct {
+				Message string `json:"message"`
+			}{},
+			expectedBody: map[string]any{"message": "decoded"},
+			err:          nil,
+		},
+		"sad - test that nil io.reader throws error": {
+			req:          nil,
+			body:         struct{}{},
+			expectedBody: map[string]any{},
+			err:          v1.ErrUnexpectedNillValues,
+		},
+		"sad - test that invalid json body returns error": {
+			req:          bytes.NewBuffer([]byte("")),
+			body:         struct{}{},
+			expectedBody: map[string]any{},
+			err:          apperror.NewBadRequestError(errors.New("EOF")),
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			body := tc.body
+			err := v1.JsonDecode(tc.req, &body)
+			assert.ErrorIs(t, err, tc.err)
+			if tc.err == nil {
+				assert.EqualValues(t, tc.expectedBody, body)
+			}
+		})
+	}
+}

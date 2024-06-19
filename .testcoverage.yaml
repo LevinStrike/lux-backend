@@ -1,0 +1,9 @@
+profile: cover.out
+local-prefix: "github.com/LevinStrike/lux-backend"
+
+threshold:
+  total: 90
+
+exclude:
+  paths:
+    - /mocks\/?$
