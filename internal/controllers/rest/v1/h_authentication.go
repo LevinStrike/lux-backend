@@ -8,6 +8,8 @@ import (
 )
 
 func (r *Router) Login(rw http.ResponseWriter, rq *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+
 	body := struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -19,10 +21,18 @@ func (r *Router) Login(rw http.ResponseWriter, rq *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(rq.Context(), time.Minute*1)
 	defer cancel()
-	_, err := r.userService.Login(ctx, body.Username, body.Password)
+	user, err := r.userService.Login(ctx, body.Username, body.Password)
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(rw).Encode(RespMessage{Status: http.StatusUnauthorized, Error: err.Error()})
+		return
+	}
+	token, err := createToken(user)
+
+	rw.Header().Set("Authorization", "Bearer "+token)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(rw).Encode(RespMessage{Status: http.StatusInternalServerError, Error: err.Error()})
 		return
 	}
 
@@ -42,10 +52,18 @@ func (r *Router) SignUp(rw http.ResponseWriter, rq *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*1)
 	defer cancel()
-	_, err := r.userService.SignUp(ctx, body.Username, body.Password)
+	user, err := r.userService.SignUp(ctx, body.Username, body.Password)
 	if err != nil {
 		rw.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(rw).Encode(RespMessage{Status: http.StatusUnauthorized, Error: err.Error()})
+		return
+	}
+	token, err := createToken(user)
+
+	rw.Header().Set("Authorization", "Bearer "+token)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(rw).Encode(RespMessage{Status: http.StatusInternalServerError, Error: err.Error()})
 		return
 	}
 
